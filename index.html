@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Count of Monte Carlo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: #1a1410;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='grid' width='20' height='20' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 20 0 L 0 0 0 20' fill='none' stroke='rgba(139,119,101,0.1)' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grid)' /%3E%3C/svg%3E");
+            padding: 2rem;
+            font-family: Georgia, serif;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-family: Garamond, serif;
+            color: #d4c5a0;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.05em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #8b7765;
+            font-size: 0.875rem;
+            font-style: italic;
+            margin-bottom: 2rem;
+        }
+
+        .stats-box {
+            background-color: #2a2318;
+            border: 2px solid #4a3a28;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            color: #d4c5a0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .stats-label {
+            color: #8b7765;
+        }
+
+        .progress-container {
+            background-color: #1a1410;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #4a3a28;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(to right, #8b7765, #d4c5a0);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .text-box {
+            background-color: #f4ecd8;
+            border: 4px solid #8b7765;
+            padding: 2rem;
+            border-radius: 4px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.3);
+            min-height: 300px;
+        }
+
+        .text-content {
+            font-family: Garamond, Georgia, serif;
+            font-size: 1.125rem;
+            line-height: 1.8;
+            color: #2a2318;
+            white-space: pre-wrap;
+            letter-spacing: 0.02em;
+        }
+
+        .loading, .error {
+            text-align: center;
+            color: #d4c5a0;
+            font-family: 'Courier New', monospace;
+            font-size: 1.25rem;
+            margin-top: 3rem;
+        }
+
+        .error {
+            color: #ff6b6b;
+        }
+
+        .attribution {
+            margin-top: 1.5rem;
+            text-align: center;
+            color: #8b7765;
+            font-size: 0.75rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            background-color: #4a3a28;
+            color: #d4c5a0;
+            border: 2px solid #8b7765;
+            padding: 0.75rem 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .btn:hover:not(:disabled) {
+            background-color: #5a4a38;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background-color: #8b7765;
+            color: #1a1410;
+            font-weight: bold;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #9b8775;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .text-box {
+                padding: 1rem;
+            }
+            
+            .text-content {
+                font-size: 1rem;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>The Count of Monte Carlo</h1>
+        <p class="subtitle">A Monte Carlo simulation converging upon Dumas</p>
+        
+        <div id="loading" class="loading">Loading text from Project Gutenberg...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="content" style="display: none;">
+            <div class="stats-box">
+                <div class="stats-row">
+                    <div><span class="stats-label">Passage:</span> <span id="passageNum">1</span> of <span id="totalPassages">0</span></div>
+                    <div><span class="stats-label">Iterations:</span> <span id="iterations">0</span></div>
+                    <div><span class="stats-label">Convergence:</span> <span id="convergence">0.0</span>%</div>
+                    <div><span class="stats-label">Status:</span> <span id="status">Simulating...</span></div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress"></div>
+                </div>
+            </div>
+
+            <div class="text-box">
+                <pre class="text-content" id="text"></pre>
+            </div>
+
+            <div class="controls">
+                <button class="btn" id="prevBtn" onclick="previousPassage()" disabled>← Previous</button>
+                <button class="btn btn-primary" id="skipBtn" onclick="skipToEnd()">Skip to End</button>
+                <button class="btn" id="nextBtn" onclick="nextPassage()" disabled>Next →</button>
+            </div>
+
+            <div class="attribution">
+                Text source: Project Gutenberg (gutenberg.org/ebooks/1184)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
+        
+        // Global state
+        let allPassages = [];
+        let currentPassageIndex = 0;
+        let targetText = '';
+        let displayText = '';
+        let iteration = 0;
+        let isComplete = false;
+        let animationId = null;
+        
+        // DOM elements
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error');
+        const contentEl = document.getElementById('content');
+        const textEl = document.getElementById('text');
+        const iterationsEl = document.getElementById('iterations');
+        const convergenceEl = document.getElementById('convergence');
+        const statusEl = document.getElementById('status');
+        const progressEl = document.getElementById('progress');
+        const passageNumEl = document.getElementById('passageNum');
+        const totalPassagesEl = document.getElementById('totalPassages');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const skipBtn = document.getElementById('skipBtn');
+
+        // Split text into passages of reasonable length
+        function splitIntoPassages(fullText) {
+            const passages = [];
+            const lines = fullText.split('\n');
+            let currentPassage = '';
+            let wordCount = 0;
+            const wordsPerPassage = 100;
+            
+            for (let line of lines) {
+                const lineWords = line.trim().split(/\s+/).length;
+                
+                if (wordCount + lineWords > wordsPerPassage && currentPassage.trim().length > 0) {
+                    // End current passage at sentence boundary if possible
+                    const lastSentence = currentPassage.lastIndexOf('.');
+                    if (lastSentence > currentPassage.length * 0.5) {
+                        passages.push(currentPassage.substring(0, lastSentence + 1).trim());
+                        currentPassage = currentPassage.substring(lastSentence + 1) + '\n' + line;
+                        wordCount = currentPassage.split(/\s+/).length;
+                    } else {
+                        passages.push(currentPassage.trim());
+                        currentPassage = line;
+                        wordCount = lineWords;
+                    }
+                } else {
+                    currentPassage += (currentPassage ? '\n' : '') + line;
+                    wordCount += lineWords;
+                }
+            }
+            
+            if (currentPassage.trim().length > 0) {
+                passages.push(currentPassage.trim());
+            }
+            
+            return passages.filter(p => p.length > 50); // Filter out very short passages
+        }
+
+        // Fetch text from Project Gutenberg using CORS proxy
+        async function fetchText() {
+            try {
+                const corsProxy = 'https://corsproxy.io/?';
+                const url = 'https://www.gutenberg.org/files/1184/1184-0.txt';
+                
+                const response = await fetch(corsProxy + encodeURIComponent(url));
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch text');
+                }
+                
+                const fullText = await response.text();
+                
+                // Extract the main text (after header, before footer)
+                const startIndex = fullText.indexOf('On the 24th of February');
+                const endMarker = '*** END OF THE PROJECT GUTENBERG EBOOK';
+                let endIndex = fullText.indexOf(endMarker);
+                
+                if (startIndex === -1) {
+                    throw new Error('Could not find the opening passage');
+                }
+                
+                if (endIndex === -1) {
+                    endIndex = startIndex + 50000; // Take first ~50k chars if no end marker
+                }
+                
+                const mainText = fullText.substring(startIndex, endIndex).trim();
+                
+                // Split into passages
+                allPassages = splitIntoPassages(mainText);
+                totalPassagesEl.textContent = allPassages.length;
+                
+                // Show content, hide loading
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
+                
+                // Start with first passage
+                loadPassage(0);
+            } catch (err) {
+                loadingEl.style.display = 'none';
+                errorEl.textContent = 'Failed to load text from Project Gutenberg. Please check your internet connection.';
+                errorEl.style.display = 'block';
+                console.error(err);
+            }
+        }
+
+        // Load a specific passage
+        function loadPassage(index) {
+            if (index < 0 || index >= allPassages.length) return;
+            
+            // Stop current animation
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            // Reset state
+            currentPassageIndex = index;
+            targetText = allPassages[index];
+            iteration = 0;
+            isComplete = false;
+            
+            // Initialize with random text
+            displayText = targetText.split('').map(char => {
+                if (char === '\n') return '\n';
+                if (char === ' ') return ' ';
+                return chars[Math.floor(Math.random() * chars.length)];
+            }).join('');
+            
+            // Update UI
+            passageNumEl.textContent = index + 1;
+            statusEl.textContent = 'Simulating...';
+            statusEl.style.color = '#d4c5a0';
+            prevBtn.disabled = index === 0;
+            nextBtn.disabled = true; // Disabled until convergence completes
+            skipBtn.textContent = 'Skip to End';
+            skipBtn.disabled = false;
+            
+            // Start animation
+            animate();
+        }
+
+        // Navigation functions
+        function previousPassage() {
+            if (currentPassageIndex > 0) {
+                loadPassage(currentPassageIndex - 1);
+            }
+        }
+
+        function nextPassage() {
+            if (currentPassageIndex < allPassages.length - 1) {
+                loadPassage(currentPassageIndex + 1);
+            }
+        }
+
+        function skipToEnd() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            isComplete = true;
+            displayText = targetText;
+            textEl.textContent = displayText;
+            iterationsEl.textContent = iteration.toLocaleString();
+            convergenceEl.textContent = '100.0';
+            progressEl.style.width = '100%';
+            statusEl.textContent = 'Complete';
+            statusEl.style.color = '#90ee90';
+            nextBtn.disabled = currentPassageIndex >= allPassages.length - 1;
+            skipBtn.textContent = 'Complete';
+            skipBtn.disabled = true;
+        }
+
+        // Calculate convergence percentage
+        function calculateConvergence() {
+            let matches = 0;
+            for (let i = 0; i < targetText.length; i++) {
+                if (displayText[i] === targetText[i]) matches++;
+            }
+            return (matches / targetText.length * 100).toFixed(1);
+        }
+
+        // Optimized animation loop with batching
+        function animate() {
+            if (isComplete) return;
+
+            iteration++;
+            const convergenceRate = 0.03; // 3% chance per character per frame (slightly faster)
+            const batchSize = 5; // Update multiple characters per frame for speed
+            
+            // Update display text with batching
+            const textArray = displayText.split('');
+            let allCorrect = true;
+            let updatesThisFrame = 0;
+            
+            // Randomize order to avoid left-to-right bias
+            const indices = Array.from({length: textArray.length}, (_, i) => i);
+            
+            for (let idx of indices) {
+                const i = idx;
+                
+                // If already correct, skip
+                if (textArray[i] === targetText[i]) continue;
+                
+                allCorrect = false;
+                
+                // Preserve newlines and spaces
+                if (targetText[i] === '\n') {
+                    textArray[i] = '\n';
+                    continue;
+                }
+                if (targetText[i] === ' ') {
+                    textArray[i] = ' ';
+                    continue;
+                }
+                
+                // Monte Carlo: random chance to converge to correct character
+                if (Math.random() < convergenceRate) {
+                    textArray[i] = targetText[i];
+                    updatesThisFrame++;
+                    if (updatesThisFrame >= batchSize) break;
+                } else if (updatesThisFrame < batchSize / 2) {
+                    // Flicker some characters for visual effect
+                    textArray[i] = chars[Math.floor(Math.random() * chars.length)];
+                    updatesThisFrame++;
+                }
+            }
+            
+            displayText = textArray.join('');
+            
+            // Update DOM (throttled for performance)
+            if (iteration % 2 === 0 || allCorrect) {
+                textEl.textContent = displayText;
+                iterationsEl.textContent = iteration.toLocaleString();
+                
+                const convergence = calculateConvergence();
+                convergenceEl.textContent = convergence;
+                progressEl.style.width = convergence + '%';
+            }
+            
+            // Check if complete
+            if (allCorrect || displayText === targetText) {
+                isComplete = true;
+                textEl.textContent = displayText;
+                statusEl.textContent = 'Complete';
+                statusEl.style.color = '#90ee90';
+                nextBtn.disabled = currentPassageIndex >= allPassages.length - 1;
+                skipBtn.disabled = true;
+                skipBtn.textContent = 'Complete';
+                return;
+            }
+            
+            // Continue animation
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Start the application
+        fetchText();
+    </script>
+</body>
+</html>

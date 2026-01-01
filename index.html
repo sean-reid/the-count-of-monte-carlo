@@ -283,13 +283,10 @@
             return passages.filter(p => p.length > 50); // Filter out very short passages
         }
 
-        // Fetch text from Project Gutenberg using CORS proxy
+        // Fetch text from local file
         async function fetchText() {
             try {
-                const gutenbergUrl = 'https://www.gutenberg.org/files/1184/1184-0.txt';
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(gutenbergUrl)}`;
-                
-                const response = await fetch(proxyUrl);
+                const response = await fetch('1184-0.txt');
                 
                 if (!response.ok) {
                     throw new Error('Failed to fetch text');
